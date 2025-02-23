@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 import tech.duhacks.duhacks.dto.ProductLogDto;
 import tech.duhacks.duhacks.dto.ProductLogTotalDto;
 import tech.duhacks.duhacks.exception.AuthException;
+import tech.duhacks.duhacks.model.HealthProduct;
 import tech.duhacks.duhacks.model.ProductLog;
 import tech.duhacks.duhacks.repository.HealthProductRepo;
 import tech.duhacks.duhacks.repository.ProductLogRepo;
@@ -93,12 +94,44 @@ public class ProductService {
 
         var res = productRepo.findAllByUserIdAndCreatedAtBetween(id,startOfDay,endOfDay);
 
-        if(res.size() == 0){
-            var ans = healthProductRepo.findAllByUserId(id);
+        if(res.isEmpty()){
+            List<HealthProduct> ans = healthProductRepo.findAllByUserId(id);
 
+            Map<Long, List<HealthProduct>> groupedByHealthProduct = ans.stream()
+                    .collect(Collectors.groupingBy(HealthProduct::getId));
 
+            return groupedByHealthProduct.values().stream().map(
+                    healthProducts -> {
+                        var healthProduct = healthProducts.getFirst();
+
+                        ProductLogTotalDto dto = new ProductLogTotalDto();
+                        dto.setHealthProductId(healthProduct.getId());
+                        dto.setHealthProductName(healthProduct.getName());
+
+                        dto.setMisCount((long) healthProduct.getMedicationSchedules().size());
+                        dto.setIsTakenCount(0L);
+                        return dto;
+                    }
+            ).toList();
         }
 
-        return
+        Map<String, List<ProductLog>> groupedByHealthProduct = res.stream()
+                .collect(Collectors.groupingBy(productLog ->
+                    productLog.getHealthProduct().getName()
+                ));
+
+        return groupedByHealthProduct.values().stream().map(
+                productLogs -> {
+                    var value = productLogs.getFirst();
+                    ProductLogTotalDto dto = new ProductLogTotalDto();
+                    dto.setHealthProductId(value.getHealthProduct().getId());
+                    dto.setHealthProductName(value.getHealthProduct().getName());
+
+                    long count = productLogs.size();
+                    dto.setMisCount(value.getHealthProduct().getMedicationSchedules().size() - count);
+                    dto.setIsTakenCount(count);
+                    return dto;
+                }
+        ).toList();
     }
 }

@@ -33,6 +33,8 @@ public class HealthProductService {
     public HealthProductDto add(HealthProductDto hrd){
         var user = userRepo.findById(hrd.getUserId()).orElseThrow(() ->  new EntityNotFoundException("User Not Found") );
 
+        System.out.println(hrd);
+
         var healthProduct  = HealthProduct.builder()
                 .name(hrd.getName())
                 .amount(hrd.getAmount())

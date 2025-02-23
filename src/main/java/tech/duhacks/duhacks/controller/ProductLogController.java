@@ -26,4 +26,9 @@ public class ProductLogController {
         productService.add(pd);
         return ResponseEntity.ok().build();
     }
+
+    @GetMapping("//{id}")
+    public  ResponseEntity<List<ProductLogTotalDto>> getOneDayNotificationCount(@PathVariable("id")Long id){
+        return ResponseEntity.ok(productService.getOneDay(id));
+    }
 }
