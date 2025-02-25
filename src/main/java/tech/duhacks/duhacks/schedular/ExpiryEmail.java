@@ -50,7 +50,7 @@ public class ExpiryEmail implements Runnable{
 
         var md = new medicineData(hp.getExpiryDate(),hp.getId());
 
-        if(!kolkataLocalTime.isAfter(md.getExpiryTime())){
+        if(kolkataLocalTime.isAfter(md.getExpiryTime())){
             return;
         }
 
@@ -64,8 +64,8 @@ public class ExpiryEmail implements Runnable{
             }
 
             var firstData = taskQueue.peek();
-
-            if (firstData.getExpiryTime().isAfter(md.getExpiryTime())) {
+            if (firstData.getExpiryTime().equals(md.getExpiryTime())
+                    || firstData.getExpiryTime().isAfter(md.getExpiryTime())) {
                 taskQueue.add(md);
                 thread.interrupt();
                 return;
@@ -89,31 +89,25 @@ public class ExpiryEmail implements Runnable{
 
     @Override
     public void run() {
-        while (true) {
-            lock.lock();
-            try {
-                if (taskQueue.isEmpty()) {
-                    break;
+        while (!taskQueue.isEmpty()) {
+
+            medicineData expiryData = taskQueue.peek();
+            ZonedDateTime kolkataZonedTime = ZonedDateTime.now(kolkataZoneId);
+
+            long timeForSleep = java.time.Duration.between(kolkataZonedTime, expiryData.getExpiryTime().atStartOfDay(kolkataZoneId).minusDays(2)).toMillis();
+            System.out.println(timeForSleep);
+            if (timeForSleep <= 0) {
+                System.out.println(timeForSleep);
+                taskQueue.poll();
+                mailSender.SendEmail(expiryData.getId());
+            } else {
+                try {
+                    System.out.println(timeForSleep);
+                    thread.sleep(timeForSleep);
+                } catch (InterruptedException _) {
                 }
-
-                medicineData expiryData = taskQueue.peek();
-                ZonedDateTime kolkataZonedTime = ZonedDateTime.now(kolkataZoneId);
-
-                long timeForSleep = java.time.Duration.between(kolkataZonedTime, expiryData.getExpiryTime().atStartOfDay(kolkataZoneId).minusDays(2)).toMillis();
-
-                if (timeForSleep <= 0) {
-                    taskQueue.poll();
-                    mailSender.SendEmail(expiryData.getId());
-                } else {
-                    try {
-                        thread.sleep(timeForSleep);
-                    } catch (InterruptedException _) {
-                        thread.interrupt();
-                    }
-                }
-            } finally {
-                lock.unlock();  // Always unlock the lock
             }
+
         }
     }
 }

@@ -17,9 +17,9 @@ public class MailSenderService {
     public void SendEmail(Long healthProductId){
         var healthProduct = healthProductRepo.findById(healthProductId).orElse(null);
 
+
         if(healthProduct == null)
             return;
-
 
         var user = healthProduct.getUser();
 
